@@ -55,10 +55,10 @@ if __name__ == "__main__":
     optimizer = optim.SGD(image_fragment_model.parameters(), lr=0.01)
 
     # train dataset loader
-    train_dl,num_train_batches = data_loader.get_data_loader(args.path_to_data_folder, 'train', args.batch_size)
+    train_dl,num_train_batches = data_loader.get_data_loader(args.path_to_data_folder, 'train', args.batch_size, fragment_size=args.fragment_size)
 
     # test dataset loader
-    test_dl, num_test_batches = data_loader.get_data_loader(args.path_to_data_folder, 'test', 1)
+    test_dl, num_test_batches = data_loader.get_data_loader(args.path_to_data_folder, 'test', 1, fragment_size=args.fragment_size)
 
     all_losses = deque(maxlen=num_train_batches)
 

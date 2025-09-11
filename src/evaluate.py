@@ -107,7 +107,7 @@ if __name__ == "__main__":
     DS = datasets.Imagenet64Eval(args.eval_file_path)
     image_dg = DS.datagen_cls(NUM_IMAGES_PER_SAMPLE)
 
-    iterable_dataset = ImageFragmentsDataset(image_dg)
+    iterable_dataset = ImageFragmentsDataset(image_dg, fragment_size=args.fragment_size)
     test_dataloader = DataLoader(iterable_dataset, batch_size=args.batch_size, num_workers=0)
     num_test_batches = DS.test_size // args.batch_size
 
