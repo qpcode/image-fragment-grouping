@@ -2,6 +2,7 @@
 import argparse
 import torch
 from torch.utils.data import IterableDataset, DataLoader
+import tensorflow as tf
 
 import datasets
 
@@ -9,17 +10,36 @@ import datasets
 # are not loaded each time for each dataloader
 DS = None
 
+
+def init_augmentor(augmentation_level):
+    return tf.keras.preprocessing.image.ImageDataGenerator(
+        rotation_range=augmentation_level*20,
+        width_shift_range=augmentation_level*0.1,
+        height_shift_range=augmentation_level*0.1,
+        # shear_range=10,
+        # zoom_range=0.1,
+        channel_shift_range=augmentation_level*0.2,
+        fill_mode="reflect",
+    )
+
+
 class ImageFragmentsDataset(IterableDataset):
     """
     An Iterable Dataset where each item has the shuffled image fragments from 10 images and
     the corresponding image source ids
     """
-    def __init__(self, image_data_generator, image_size=64, fragment_size=16, num_images_per_sample=10):
+    def __init__(self, image_data_generator, image_size=64, fragment_size=16, num_images_per_sample=10, frag_augmentation_level=0.0):
         self.image_data_generator = image_data_generator
         self.image_size = image_size
         self.fragment_size = fragment_size
         self.num_fragments_per_axis = self.image_size // self.fragment_size
         self.num_images_per_sample = num_images_per_sample
+
+        assert 0.0 <= frag_augmentation_level <= 1.0
+
+        self.frag_augmentation_level = frag_augmentation_level
+        if self.frag_augmentation_level > 0.0:
+            self.augmentor = init_augmentor(self.frag_augmentation_level)
 
     def __iter__(self):
         for x, _ in self.image_data_generator:
@@ -34,6 +54,12 @@ class ImageFragmentsDataset(IterableDataset):
             # fragment each image
             fragmented_x = self.fragment(x)
             fragmented_x = fragmented_x.view(self.num_images_per_sample * num_fragments_per_image, -1)
+
+            if self.frag_augmentation_level > 0.0:
+                fragmented_x = fragmented_x.reshape(shape=(fragmented_x.shape[0], self.fragment_size, self.fragment_size, 3)).numpy()
+                fragmented_x = next(self.augmentor.flow(fragmented_x, batch_size=self.num_images_per_sample * num_fragments_per_image)) #augmented fragments
+                fragmented_x = torch.from_numpy(fragmented_x)
+                fragmented_x = fragmented_x.reshape(shape=(fragmented_x.shape[0], self.fragment_size*self.fragment_size*3))
 
             # now shuffle both the image fragments and image source ids
             shuffled_fragment_indices = torch.randperm(self.num_images_per_sample * num_fragments_per_image)
